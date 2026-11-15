@@ -47,7 +47,7 @@ export function App(): React.ReactElement {
   // 1. Simulation Game State
   const [state, setState] = useState<CrisisGameState>(() => createInitialCrisisState());
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [playbackSpeedMs, setPlaybackSpeedMs] = useState<number>(800); // 800ms default (~58s total)
+  const [playbackSpeedMs, setPlaybackSpeedMs] = useState<number>(3500); // 3.5s/hr default (1x) so players have time to act
 
   // 2. 3D Camera Station & Interaction Targets
   const [cameraStation, setCameraStation] = useState<CameraStationId>('station_1_console');
@@ -135,7 +135,12 @@ export function App(): React.ReactElement {
           return prev;
         }
         const next = advanceCrisisHour(prev);
-        if (next.status !== 'running') {
+        if (
+          next.status !== 'running' ||
+          next.hour === 15 ||
+          next.hour === 29 ||
+          next.hour === 39
+        ) {
           setIsPlaying(false);
         }
         return next;

@@ -261,17 +261,23 @@ export const DiegeticReticleAndHUD: React.FC<DiegeticReticleAndHUDProps> = ({
               <span>+1h</span>
             </button>
 
-            {/* 1x / Turbo */}
+            {/* Speed: 1x (3.5s/h) -> 2x (1.8s/h) -> Fast (0.8s/h) */}
             <button
               type="button"
-              onClick={() => onChangeSpeed(playbackSpeedMs < 800 ? 1000 : 150)}
+              onClick={() => {
+                const nextSpeed =
+                  playbackSpeedMs >= 3000 ? 1800 : playbackSpeedMs >= 1500 ? 800 : 3500;
+                onChangeSpeed(nextSpeed);
+              }}
               className={`rounded-[2px] border border-[#3B4252] bg-[#1E232B] hover:bg-[#2A303A] active:translate-y-px px-2 py-1 text-[11px] font-sans font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
-                playbackSpeedMs < 800 ? 'text-[#F59E0B] border-[#F59E0B]/60' : 'text-[#F4F4F0]'
+                playbackSpeedMs < 3000 ? 'text-[#F59E0B] border-[#F59E0B]/60' : 'text-[#F4F4F0]'
               }`}
-              title="Toggle Simulation Speed (1x / Turbo)"
+              title="Cycle Simulation Speed: 1x (3.5s/h) -> 2x (1.8s/h) -> Fast (0.8s/h)"
             >
               <FastForward className="h-3 w-3 text-[#9CA3AF]" />
-              <span>{playbackSpeedMs < 800 ? 'Turbo' : '1x'}</span>
+              <span>
+                {playbackSpeedMs >= 3000 ? '1x' : playbackSpeedMs >= 1500 ? '2x' : 'Fast'}
+              </span>
             </button>
 
             {/* T+15h SPE Climax */}
