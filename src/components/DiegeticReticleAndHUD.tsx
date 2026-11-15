@@ -21,7 +21,7 @@ import type {
   ValveAndBreakerControls,
 } from '../contracts/types';
 import enStrings from '../i18n/en.json';
-import { CadetControlDeck } from './CadetOnboardingAndHUD';
+import { CadetMissionStrip, CadetMetersDock } from './CadetOnboardingAndHUD';
 import * as CockpitAudio from '../three/CockpitAudioAndTextures';
 
 // Safe bridge to parallel-updated audio exports
@@ -59,6 +59,9 @@ export interface DiegeticReticleAndHUDProps {
   onToggleViewMode: () => void;
   onReplayTutorial: () => void;
   onUpdateControls: (patch: Partial<ValveAndBreakerControls>) => void;
+  highlightTradeOff?: boolean;
+  phaseAlert?: string | null;
+  onDismissPhaseAlert?: () => void;
 }
 
 const STATIONS: { id: CameraStationId; label: string; title: string }[] = [
@@ -86,6 +89,9 @@ export const DiegeticReticleAndHUD: React.FC<DiegeticReticleAndHUDProps> = ({
   onToggleViewMode,
   onReplayTutorial,
   onUpdateControls,
+  highlightTradeOff,
+  phaseAlert,
+  onDismissPhaseAlert,
 }) => {
   // Local audio mute state synced with audio engine
   const [audioMuted, setAudioMuted] = useState<boolean>(() => isCockpitAudioMuted());
@@ -343,7 +349,7 @@ export const DiegeticReticleAndHUD: React.FC<DiegeticReticleAndHUDProps> = ({
               onClick={onToggleViewMode}
               className={`rounded-[2px] border min-h-[30px] bg-[#1E232B] hover:bg-[#2A303A] active:translate-y-px px-2 py-1 text-[11px] font-sans font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
                 viewMode === 'engineer'
-                  ? 'border-[#38BDF8] text-[#38BDF8]'
+                  ? 'border-[#F59E0B] text-[#F59E0B]'
                   : 'border-[#3B4252] text-[#F4F4F0]'
               }`}
               title="Toggle Cadet / Engineer View Deck"
@@ -363,9 +369,9 @@ export const DiegeticReticleAndHUD: React.FC<DiegeticReticleAndHUDProps> = ({
           </div>
         </div>
 
-        {/* Row 2: Cadet Deck or Caution & Warning Matrix Annunciators */}
+        {/* Row 2: Cadet Mission Strip or Caution & Warning Matrix Annunciators */}
         {viewMode === 'cadet' ? (
-          <CadetControlDeck
+          <CadetMissionStrip
             state={state}
             env={env}
             onUpdateControls={onUpdateControls}
@@ -404,6 +410,27 @@ export const DiegeticReticleAndHUD: React.FC<DiegeticReticleAndHUDProps> = ({
           </div>
         )}
       </div>
+
+      {/* Auto-Pause Crisis Checkpoint Banner */}
+      {phaseAlert && (
+        <div className="w-full px-3 pt-2 pointer-events-none flex justify-center">
+          <div className="pointer-events-auto max-w-4xl w-full rounded-[2px] border border-[#F59E0B] bg-[#14171C]/95 px-3 py-1.5 flex items-center justify-between gap-3 text-xs text-[#FEF3C7]">
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertTriangle className="h-4 w-4 text-[#F59E0B] shrink-0" />
+              <span className="font-sans font-medium">{phaseAlert}</span>
+            </div>
+            {onDismissPhaseAlert && (
+              <button
+                type="button"
+                onClick={onDismissPhaseAlert}
+                className="rounded-[2px] border border-[#3B4252] bg-[#1E232B] hover:bg-[#2A303A] px-2 py-0.5 text-[11px] font-sans text-[#F4F4F0] shrink-0 cursor-pointer"
+              >
+                OK
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ------------------------------------------------------------- */}
       {/* 2. CENTER OPTICAL CROSSHAIR & INSPECTION STENCIL */}
@@ -477,9 +504,18 @@ export const DiegeticReticleAndHUD: React.FC<DiegeticReticleAndHUDProps> = ({
       </div>
 
       {/* ------------------------------------------------------------- */}
-      {/* 3. BOTTOM NAVIGATION & STATION SWITCH STRIP */}
+      {/* 3. BOTTOM CADET METERS DOCK, ALARM & STATION SWITCH STRIP */}
       {/* ------------------------------------------------------------- */}
       <div className="w-full flex flex-col justify-end">
+        {viewMode === 'cadet' && (
+          <CadetMetersDock
+            state={state}
+            onUpdateControls={onUpdateControls}
+            onSelectStation={onSelectStation}
+            highlightTradeOff={highlightTradeOff}
+          />
+        )}
+
         {/* Apollo Master Alarm Bar */}
         {showMasterAlarm && (
           <div className="w-full bg-[#450A0A]/95 border-t border-b border-[#EF4444] text-[#FEE2E2] font-sans text-xs px-3 py-1 flex items-center justify-between">

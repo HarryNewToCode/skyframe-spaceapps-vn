@@ -22,6 +22,7 @@ import type {
   ValveAndBreakerControls,
 } from '../contracts/types';
 import enStrings from '../i18n/en.json';
+import * as CockpitAudio from '../three/CockpitAudioAndTextures';
 
 export type TutorialStage = 'welcome' | 'step1' | 'step2' | 'step3' | 'done';
 
@@ -36,6 +37,17 @@ export interface WhatNowGuidance {
   actionLabel?: string;
   controlPatch?: Partial<ValveAndBreakerControls>;
   station?: CameraStationId;
+}
+
+function safePlaySound(kind: 'toggle_switch' | 'valve_turn' | 'switch_toggle'): void {
+  try {
+    const fn = (CockpitAudio as Record<string, unknown>).playCockpitSound;
+    if (typeof fn === 'function') {
+      (fn as (k: string) => void)(kind === 'switch_toggle' ? 'toggle_switch' : kind);
+    }
+  } catch {
+    // Audio operation safe in restricted/headless contexts
+  }
 }
 
 /** Four mission checkpoints, evaluated from the live simulation state. */
@@ -164,10 +176,13 @@ function faceFor(key: FaceKey) {
 }
 
 const TAP_BTN =
-  'min-h-[32px] w-full px-2.5 py-1.5 rounded-[2px] border border-[#3B4252] bg-[#1E232B] hover:bg-[#2A303A] font-mono text-xs font-semibold flex items-center justify-between cursor-pointer transition-colors active:translate-y-px pointer-events-auto';
+  'min-h-[30px] w-full px-2 py-1 rounded-[2px] border border-[#3B4252] bg-[#1E232B] hover:bg-[#2A303A] text-left font-sans text-xs font-semibold flex items-center justify-between cursor-pointer transition-colors active:translate-y-px pointer-events-auto';
 
-/** Compact Cadet HUD: 4-checkpoint strip, "What now?" hint, and 4 meter cards. */
-export const CadetControlDeck: React.FC<{
+/**
+ * 1. CadetMissionStrip
+ * Super sleek ~56px Apollo strip for Row 2 of the Flight Controller Top Bar.
+ */
+export const CadetMissionStrip: React.FC<{
   state: CrisisGameState;
   env: CrisisHourEnvironment;
   onUpdateControls: (patch: Partial<ValveAndBreakerControls>) => void;
@@ -180,6 +195,128 @@ export const CadetControlDeck: React.FC<{
   const activeGoal = enStrings.checkpoints[checkpoints.activeIndex];
   const progressPct = Math.min(100, Math.max(0, (state.hour / 72) * 100));
 
+  const handleExecuteGuidance = () => {
+    safePlaySound(guidance.station === 'station_3_valves' ? 'valve_turn' : 'toggle_switch');
+    if (guidance.controlPatch) onUpdateControls(guidance.controlPatch);
+    if (guidance.station) onSelectStation(guidance.station);
+  };
+
+  return (
+    <div className="w-full bg-[#111419] border-t border-[#1E232B] pt-1.5 flex flex-col gap-1.5 select-none font-sans">
+      {/* Line 1: Mission Checkpoints + Progress + What Now toggle */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {/* Left: Goals Title & Stars */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="font-sans font-semibold text-xs text-[#F59E0B] tracking-wider uppercase">
+            {enStrings.views.missionGoalsTitle}
+          </span>
+          <span className="font-mono text-[10px] text-[#9CA3AF] tabular-nums">
+            ({checkpoints.earnedCount}/4 {enStrings.views.starsLabel})
+          </span>
+        </div>
+
+        {/* Center: 4 Horizontal Segmented Checkpoint Pills + 2px 72h Progress Bar */}
+        <div className="flex-1 min-w-[280px] flex flex-col gap-1">
+          <div className="grid grid-cols-4 gap-1.5">
+            {enStrings.checkpoints.map((cp, idx) => {
+              const isEarned = checkpoints.completed[idx];
+              const isActive = idx === checkpoints.activeIndex;
+              return (
+                <div
+                  key={cp.id}
+                  className={`px-2 py-1 rounded-[2px] border flex items-center justify-between gap-1 min-w-0 transition-colors ${
+                    isActive ? 'border-[#F59E0B] bg-[#1E232B]' : 'border-[#252A32] bg-[#14171C]'
+                  }`}
+                >
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-mono text-[10px] text-[#9CA3AF] leading-none">{cp.hours}</span>
+                    <span
+                      className="font-sans text-[11px] font-medium text-[#F4F4F0] truncate leading-tight mt-0.5"
+                      title={cp.title}
+                    >
+                      {cp.title}
+                    </span>
+                  </div>
+                  <Star
+                    className={`h-3 w-3 shrink-0 ${
+                      isEarned ? 'fill-[#F59E0B] text-[#F59E0B]' : 'fill-transparent text-[#4B5563]'
+                    }`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          {/* Thin 2px 72h progress bar underneath */}
+          <div className="w-full bg-[#1E232B] h-[2px] rounded-full overflow-hidden">
+            <div
+              className="bg-[#F59E0B] h-full transition-all duration-300 ease-out"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Right: What now? pill button */}
+        <button
+          type="button"
+          onClick={() => setHintOpen((prev) => !prev)}
+          className="min-h-[30px] px-2.5 py-1 rounded-[2px] border border-[#F59E0B]/80 bg-[#1E232B] hover:bg-[#2A303A] text-[#F59E0B] font-sans text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors active:translate-y-px shrink-0"
+        >
+          <HelpCircle className="h-3.5 w-3.5" />
+          <span>{enStrings.views.whatNowBtn}</span>
+          {hintOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </button>
+      </div>
+
+      {/* Line 2: Active goal + Collapsible 1-line hint banner */}
+      {hintOpen && (
+        <div className="border border-[#F59E0B]/60 bg-[#14171C] px-2.5 py-1.5 rounded-[2px] flex items-center justify-between gap-2.5 text-xs text-[#F4F4F0]">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Compass className="h-3.5 w-3.5 text-[#F59E0B] shrink-0" />
+            {activeGoal && (
+              <span className="font-mono text-[10px] text-[#F59E0B] uppercase font-bold shrink-0 hidden sm:inline">
+                [GOAL: {activeGoal.title}]:
+              </span>
+            )}
+            <span className="font-sans text-xs text-[#E5E7EB] truncate">
+              {guidance.hint}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {guidance.controlPatch && (
+              <button
+                type="button"
+                onClick={handleExecuteGuidance}
+                className="min-h-[28px] px-2.5 py-0.5 rounded-[2px] border border-[#34D399] bg-[#1E232B] hover:bg-[#2A303A] text-[#34D399] font-mono text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors active:translate-y-px"
+              >
+                <Check className="h-3 w-3" />
+                <span>{guidance.actionLabel ?? enStrings.views.doMoveBtn}</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setHintOpen(false)}
+              className="min-h-[28px] px-2 py-0.5 rounded-[2px] border border-[#3B4252] bg-[#1E232B] hover:bg-[#2A303A] text-[#9CA3AF] hover:text-[#F4F4F0] font-sans text-[11px] cursor-pointer transition-colors"
+            >
+              {enStrings.views.hideHintBtn}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * 2. CadetMetersDock
+ * Sits at the bottom of the screen right above the Bottom Navigation Strip.
+ * Low-profile Apollo matte modules for Power, Air, Water & Plants, Radiation Shield.
+ */
+export const CadetMetersDock: React.FC<{
+  state: CrisisGameState;
+  onUpdateControls: (patch: Partial<ValveAndBreakerControls>) => void;
+  onSelectStation: (station: CameraStationId) => void;
+  highlightTradeOff?: boolean;
+}> = ({ state, onUpdateControls, onSelectStation, highlightTradeOff }) => {
   const { controls } = state;
   const lightsDimmed = controls.hydroponicsThrottlePct <= 25;
   const shieldUp = controls.shelterWallWaterLiters >= 350;
@@ -203,234 +340,286 @@ export const CadetControlDeck: React.FC<{
         : 'bad',
   );
 
-  const handleExecuteGuidance = () => {
-    if (guidance.controlPatch) onUpdateControls(guidance.controlPatch);
-    if (guidance.station) onSelectStation(guidance.station);
-  };
+  const waterCardBorder = highlightTradeOff
+    ? 'border-[#F59E0B] ring-1 ring-[#F59E0B]/70 shadow-lg'
+    : waterFace.border;
+
+  const shieldCardBorder = highlightTradeOff
+    ? 'border-[#F59E0B] ring-1 ring-[#F59E0B]/70 shadow-lg'
+    : shieldFace.border;
 
   return (
-    <div className="pointer-events-none w-full h-full flex flex-col justify-between p-2 sm:p-4 select-none font-sans">
-      {/* Top: checkpoints + guidance */}
-      <div className="pointer-events-auto w-full max-w-5xl mx-auto flex flex-col gap-2">
-        <div className="bg-[#14171C]/95 border border-[#2E3440] p-2.5 sm:p-3 rounded-[2px]">
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#2E3440]">
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] font-bold text-[#F59E0B] tracking-wider uppercase">
-                {enStrings.views.missionGoalsTitle}
-              </span>
-              <span className="font-mono text-[10px] text-[#9CA3AF] tabular-nums">
-                ({checkpoints.earnedCount}/4 {enStrings.views.starsLabel})
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setHintOpen((prev) => !prev)}
-              className="min-h-[32px] px-3 py-1 rounded-[2px] border border-[#F59E0B]/80 bg-[#1E232B] hover:bg-[#2A303A] text-[#F59E0B] font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors active:translate-y-px"
-            >
-              <HelpCircle className="h-3.5 w-3.5" />
-              <span>{enStrings.views.whatNowBtn}</span>
-              {hintOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </button>
-          </div>
-
-          <div className="w-full bg-[#1E232B] h-1.5 rounded-full overflow-hidden my-2 border border-[#2E3440]">
-            <div
-              className="bg-[#F59E0B] h-full transition-all duration-300 ease-out"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1">
-            {enStrings.checkpoints.map((cp, idx) => {
-              const isEarned = checkpoints.completed[idx];
-              const isActive = idx === checkpoints.activeIndex;
-              return (
-                <div
-                  key={cp.id}
-                  className={`p-2 rounded-[2px] border flex flex-col justify-between ${
-                    isActive ? 'border-[#F59E0B] bg-[#1E232B]' : 'border-[#2E3440] bg-[#14171C]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="font-mono text-[10px] text-[#9CA3AF] tracking-wide">{cp.hours}</span>
-                    <Star
-                      className={`h-3.5 w-3.5 ${
-                        isEarned ? 'fill-[#F59E0B] text-[#F59E0B]' : 'fill-transparent text-[#4B5563]'
-                      }`}
-                    />
-                  </div>
-                  <div className="font-sans text-xs font-semibold text-[#F4F4F0] line-clamp-1">{cp.title}</div>
-                </div>
-              );
-            })}
-          </div>
-
-          {activeGoal && (
-            <div className="mt-2 pt-2 border-t border-[#2E3440] flex items-center gap-2 text-xs font-sans text-[#D1D5DB]">
-              <span className="font-mono text-[10px] text-[#F59E0B] uppercase font-bold shrink-0">ACTIVE GOAL:</span>
-              <span className="line-clamp-1">{activeGoal.goal}</span>
-            </div>
-          )}
-        </div>
-
-        {hintOpen && (
-          <div className="bg-[#14171C]/95 border border-[#2E3440] border-l-4 border-l-[#F59E0B] p-2.5 sm:p-3 rounded-[2px] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2 text-xs text-[#F4F4F0]">
-              <Compass className="h-4 w-4 text-[#F59E0B] shrink-0" />
-              <span className="font-sans">{guidance.hint}</span>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
-              {guidance.controlPatch && (
-                <button
-                  type="button"
-                  onClick={handleExecuteGuidance}
-                  className="min-h-[32px] px-3 py-1 rounded-[2px] border border-[#34D399] bg-[#1E232B] hover:bg-[#2A303A] text-[#34D399] font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-colors active:translate-y-px pointer-events-auto"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  <span>{guidance.actionLabel ?? enStrings.views.doMoveBtn}</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setHintOpen(false)}
-                className="min-h-[32px] px-2.5 py-1 rounded-[2px] border border-[#3B4252] bg-[#1E232B] hover:bg-[#2A303A] text-[#9CA3AF] hover:text-[#F4F4F0] font-sans text-xs cursor-pointer transition-colors pointer-events-auto"
-              >
-                {enStrings.views.hideHintBtn}
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Bottom: 4 Cadet meter cards */}
-      <div className="pointer-events-auto w-full max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 mt-auto pt-4">
-        {/* Power */}
-        <div className={`bg-[#14171C]/95 border ${powerFace.border} p-3 rounded-[2px] flex flex-col justify-between`}>
+    <div className="w-full px-3 pb-2 pointer-events-none select-none font-sans">
+      <div className="max-w-6xl mx-auto grid grid-cols-2 lg:grid-cols-4 gap-2 pointer-events-auto">
+        {/* Module 1: Power (Battery) */}
+        <div className={`bg-[#14171C]/95 border ${powerFace.border} p-2.5 rounded-[2px] flex flex-col justify-between`}>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <BatteryCharging className="h-4 w-4 text-[#F59E0B]" />
-                <span className="font-mono text-xs font-bold text-[#F4F4F0] uppercase">{enStrings.meters.power.label}</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <BatteryCharging className="h-3.5 w-3.5 text-[#F59E0B] shrink-0" />
+                <span className="font-sans text-xs font-bold text-[#F4F4F0] truncate">
+                  {enStrings.meters.power.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    safePlaySound('toggle_switch');
+                    onSelectStation('station_2_breakers');
+                  }}
+                  className="font-mono text-[10px] font-bold text-[#9CA3AF] hover:text-[#F59E0B] bg-[#1E232B] hover:bg-[#282F3A] border border-[#3B4252] px-1 py-0.5 rounded-[2px] cursor-pointer transition-colors leading-none"
+                  title="Jump 3D camera to [2] Panel 11 Breakers"
+                >
+                  [2]
+                </button>
               </div>
-              <span className={`font-mono text-xs font-bold ${powerFace.color}`}>{powerFace.text}</span>
-            </div>
-            <div className="font-mono tabular-nums text-base font-bold text-[#F4F4F0] my-1">
-              {state.batteryKwh.toFixed(1)}{' '}
-              <span className="text-xs font-normal text-[#9CA3AF]">
-                kWh ({((state.batteryKwh / state.maxBatteryKwh) * 100).toFixed(0)}%)
+              <span
+                className={`px-1.5 py-0.5 rounded-[2px] border font-mono text-[10px] font-bold leading-none bg-[#14171C] ${powerFace.border} ${powerFace.color} shrink-0`}
+              >
+                {powerFace.text}
               </span>
             </div>
-            <p className="text-[11px] text-[#9CA3AF] line-clamp-1 mb-2.5" title={enStrings.meters.power.jargon}>
+            <div className="my-0.5 flex items-baseline gap-1">
+              <span className="font-mono tabular-nums text-sm font-bold text-[#F4F4F0]">
+                {state.batteryKwh.toFixed(1)} kWh
+              </span>
+              <span className="font-sans text-[11px] text-[#9CA3AF]">
+                ({((state.batteryKwh / state.maxBatteryKwh) * 100).toFixed(0)}%)
+              </span>
+            </div>
+            {/* Thin 3px level gauge bar */}
+            <div className="w-full bg-[#1E232B] h-[3px] rounded-full overflow-hidden my-1.5">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  state.batteryKwh >= 60 ? 'bg-[#34D399]' : state.batteryKwh >= 30 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
+                }`}
+                style={{ width: `${Math.min(100, Math.max(0, (state.batteryKwh / state.maxBatteryKwh) * 100))}%` }}
+              />
+            </div>
+            <p className="font-sans text-[11px] text-[#9CA3AF] truncate mb-2" title={enStrings.meters.power.jargon}>
               {enStrings.meters.power.jargon}
             </p>
           </div>
           <button
             type="button"
-            onClick={() => onUpdateControls({ hydroponicsThrottlePct: lightsDimmed ? 100 : 25 })}
-            className={`${TAP_BTN} text-[#F4F4F0] ${lightsDimmed ? 'text-[#F59E0B]' : 'text-[#34D399]'}`}
+            onClick={() => {
+              safePlaySound('toggle_switch');
+              onUpdateControls({ hydroponicsThrottlePct: lightsDimmed ? 100 : 25 });
+            }}
+            className={`${TAP_BTN} ${lightsDimmed ? 'text-[#F59E0B]' : 'text-[#34D399]'}`}
           >
-            <span>{lightsDimmed ? enStrings.actions.lights100 : enStrings.actions.lights25}</span>
-            <span className={`h-2 w-2 rounded-full ${lightsDimmed ? 'bg-[#F59E0B]' : 'bg-[#34D399]'}`} />
+            <span className="truncate pr-1">
+              {lightsDimmed ? enStrings.actions.lightsState25 : enStrings.actions.lightsState100}
+            </span>
+            <span className={`h-2 w-2 rounded-full shrink-0 ${lightsDimmed ? 'bg-[#F59E0B]' : 'bg-[#34D399]'}`} />
           </button>
         </div>
 
-        {/* Air */}
-        <div className={`bg-[#14171C]/95 border ${airFace.border} p-3 rounded-[2px] flex flex-col justify-between`}>
+        {/* Module 2: Air (O2 & CO2) */}
+        <div className={`bg-[#14171C]/95 border ${airFace.border} p-2.5 rounded-[2px] flex flex-col justify-between`}>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <Wind className="h-4 w-4 text-[#34D399]" />
-                <span className="font-mono text-xs font-bold text-[#F4F4F0] uppercase">{enStrings.meters.air.label}</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Wind className="h-3.5 w-3.5 text-[#34D399] shrink-0" />
+                <span className="font-sans text-xs font-bold text-[#F4F4F0] truncate">
+                  {enStrings.meters.air.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    safePlaySound('toggle_switch');
+                    onSelectStation('station_2_breakers');
+                  }}
+                  className="font-mono text-[10px] font-bold text-[#9CA3AF] hover:text-[#F59E0B] bg-[#1E232B] hover:bg-[#282F3A] border border-[#3B4252] px-1 py-0.5 rounded-[2px] cursor-pointer transition-colors leading-none"
+                  title="Jump 3D camera to [2] Panel 11 Breakers"
+                >
+                  [2]
+                </button>
               </div>
-              <span className={`font-mono text-xs font-bold ${airFace.color}`}>{airFace.text}</span>
-            </div>
-            <div className="font-mono tabular-nums text-base font-bold text-[#F4F4F0] my-1">
-              {state.cabinCo2MmHg.toFixed(2)}{' '}
-              <span className="text-xs font-normal text-[#9CA3AF]">
-                mmHg CO2 | {state.cabinO2Kg.toFixed(1)} kg O2
+              <span
+                className={`px-1.5 py-0.5 rounded-[2px] border font-mono text-[10px] font-bold leading-none bg-[#14171C] ${airFace.border} ${airFace.color} shrink-0`}
+              >
+                {airFace.text}
               </span>
             </div>
-            <p className="text-[11px] text-[#9CA3AF] line-clamp-1 mb-2.5" title={enStrings.meters.air.jargon}>
+            <div className="my-0.5 flex items-baseline gap-1">
+              <span className="font-mono tabular-nums text-sm font-bold text-[#F4F4F0]">
+                {state.cabinCo2MmHg.toFixed(2)} mmHg
+              </span>
+              <span className="font-sans text-[11px] text-[#9CA3AF]">
+                CO2 | {state.cabinO2Kg.toFixed(1)} kg O2
+              </span>
+            </div>
+            {/* Thin 3px level gauge bar (CO2 safe headroom) */}
+            <div className="w-full bg-[#1E232B] h-[3px] rounded-full overflow-hidden my-1.5">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  state.cabinCo2MmHg < 3.5 ? 'bg-[#34D399]' : state.cabinCo2MmHg < 4.5 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
+                }`}
+                style={{
+                  width: `${Math.min(100, Math.max(0, ((5.0 - state.cabinCo2MmHg) / 3.0) * 100))}%`,
+                }}
+              />
+            </div>
+            <p className="font-sans text-[11px] text-[#9CA3AF] truncate mb-2" title={enStrings.meters.air.jargon}>
               {enStrings.meters.air.jargon}
             </p>
           </div>
           <button
             type="button"
-            onClick={() => onUpdateControls({ sabatierActive: !controls.sabatierActive })}
-            className={`${TAP_BTN} text-[#F4F4F0] ${controls.sabatierActive ? 'text-[#34D399]' : ''}`}
+            onClick={() => {
+              safePlaySound('toggle_switch');
+              onUpdateControls({ sabatierActive: !controls.sabatierActive });
+            }}
+            className={`${TAP_BTN} ${controls.sabatierActive ? 'text-[#34D399]' : 'text-[#EF4444]'}`}
           >
-            <span>{controls.sabatierActive ? enStrings.actions.airBoostOff : enStrings.actions.airBoostOn}</span>
-            <span className={`h-2 w-2 rounded-full ${controls.sabatierActive ? 'bg-[#34D399]' : 'bg-[#4B5563]'}`} />
+            <span className="truncate pr-1">
+              {controls.sabatierActive ? enStrings.actions.airStateOn : enStrings.actions.airStateOff}
+            </span>
+            <span className={`h-2 w-2 rounded-full shrink-0 ${controls.sabatierActive ? 'bg-[#34D399]' : 'bg-[#EF4444]'}`} />
           </button>
         </div>
 
-        {/* Water & Plants */}
-        <div className={`bg-[#14171C]/95 border ${waterFace.border} p-3 rounded-[2px] flex flex-col justify-between`}>
+        {/* Module 3: Water & Plants */}
+        <div className={`bg-[#14171C]/95 border ${waterCardBorder} p-2.5 rounded-[2px] flex flex-col justify-between transition-all`}>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <Droplets className="h-4 w-4 text-[#34D399]" />
-                <span className="font-mono text-xs font-bold text-[#F4F4F0] uppercase">{enStrings.meters.waterFood.label}</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Droplets className="h-3.5 w-3.5 text-[#34D399] shrink-0" />
+                <span className="font-sans text-xs font-bold text-[#F4F4F0] truncate">
+                  {enStrings.meters.waterFood.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    safePlaySound('valve_turn');
+                    onSelectStation('station_3_valves');
+                  }}
+                  className="font-mono text-[10px] font-bold text-[#9CA3AF] hover:text-[#F59E0B] bg-[#1E232B] hover:bg-[#282F3A] border border-[#3B4252] px-1 py-0.5 rounded-[2px] cursor-pointer transition-colors leading-none"
+                  title="Jump 3D camera to [3] Panel 16 Valves"
+                >
+                  [3]
+                </button>
               </div>
-              <span className={`font-mono text-xs font-bold ${waterFace.color}`}>{waterFace.text}</span>
-            </div>
-            <div className="font-mono tabular-nums text-base font-bold text-[#F4F4F0] my-1">
-              {state.activeTankWaterLiters.toFixed(0)}{' '}
-              <span className="text-xs font-normal text-[#9CA3AF]">
-                L tank | {state.cropHealthPct.toFixed(0)}% crops
+              <span
+                className={`px-1.5 py-0.5 rounded-[2px] border font-mono text-[10px] font-bold leading-none bg-[#14171C] ${waterFace.border} ${waterFace.color} shrink-0`}
+              >
+                {waterFace.text}
               </span>
             </div>
-            <p className="text-[11px] text-[#9CA3AF] line-clamp-1 mb-2.5" title={enStrings.meters.waterFood.jargon}>
+            <div className="my-0.5 flex items-baseline gap-1">
+              <span className="font-mono tabular-nums text-sm font-bold text-[#F4F4F0]">
+                {state.activeTankWaterLiters.toFixed(0)} L
+              </span>
+              <span className="font-sans text-[11px] text-[#9CA3AF]">
+                tank | {state.cropHealthPct.toFixed(0)}% crops
+              </span>
+            </div>
+            {/* Thin 3px level gauge bar with subtle 200 L safe threshold tick marker */}
+            <div className="relative w-full bg-[#1E232B] h-[3px] rounded-full overflow-hidden my-1.5">
+              <div
+                className={`h-full transition-all duration-300 ${
+                  state.activeTankWaterLiters >= 200
+                    ? 'bg-[#34D399]'
+                    : state.activeTankWaterLiters >= 100
+                      ? 'bg-[#F59E0B]'
+                      : 'bg-[#EF4444]'
+                }`}
+                style={{ width: `${Math.min(100, Math.max(0, (state.activeTankWaterLiters / 500) * 100))}%` }}
+              />
+              <div
+                className="absolute top-0 bottom-0 w-[2px] bg-[#F59E0B]/80 z-10"
+                style={{ left: '40%' }}
+                title="200 L Safe Threshold"
+              />
+            </div>
+            <p className="font-sans text-[11px] text-[#9CA3AF] truncate mb-2" title={enStrings.meters.waterFood.jargon}>
               {enStrings.meters.waterFood.jargon}
             </p>
           </div>
           <button
             type="button"
-            onClick={() => onUpdateControls({ methanePyrolysisActive: !controls.methanePyrolysisActive })}
-            className={`${TAP_BTN} text-[#F4F4F0] ${controls.methanePyrolysisActive ? 'text-[#34D399]' : 'text-[#F59E0B]'}`}
+            onClick={() => {
+              safePlaySound('valve_turn');
+              onUpdateControls({ methanePyrolysisActive: !controls.methanePyrolysisActive });
+            }}
+            className={`${TAP_BTN} ${controls.methanePyrolysisActive ? 'text-[#34D399]' : 'text-[#F59E0B]'}`}
           >
-            <span>
-              {controls.methanePyrolysisActive ? enStrings.actions.leakStopOff : enStrings.actions.leakStopOn}
+            <span className="truncate pr-1">
+              {controls.methanePyrolysisActive ? enStrings.actions.leakStateSaved : enStrings.actions.leakStateLeaking}
             </span>
             <span
-              className={`h-2 w-2 rounded-full ${controls.methanePyrolysisActive ? 'bg-[#34D399]' : 'bg-[#F59E0B]'}`}
+              className={`h-2 w-2 rounded-full shrink-0 ${
+                controls.methanePyrolysisActive ? 'bg-[#34D399]' : 'bg-[#F59E0B]'
+              }`}
             />
           </button>
         </div>
 
-        {/* Radiation Shield: water wall + crew posture move together */}
-        <div className={`bg-[#14171C]/95 border ${shieldFace.border} p-3 rounded-[2px] flex flex-col justify-between`}>
+        {/* Module 4: Radiation Shield */}
+        <div className={`bg-[#14171C]/95 border ${shieldCardBorder} p-2.5 rounded-[2px] flex flex-col justify-between transition-all`}>
           <div>
             <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <Shield className="h-4 w-4 text-[#F59E0B]" />
-                <span className="font-mono text-xs font-bold text-[#F4F4F0] uppercase">{enStrings.meters.shield.label}</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Shield className="h-3.5 w-3.5 text-[#F59E0B] shrink-0" />
+                <span className="font-sans text-xs font-bold text-[#F4F4F0] truncate">
+                  {enStrings.meters.shield.label}
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    safePlaySound('valve_turn');
+                    onSelectStation('station_5_shelter');
+                  }}
+                  className="font-mono text-[10px] font-bold text-[#9CA3AF] hover:text-[#F59E0B] bg-[#1E232B] hover:bg-[#282F3A] border border-[#3B4252] px-1 py-0.5 rounded-[2px] cursor-pointer transition-colors leading-none"
+                  title="Jump 3D camera to [5] Storm Shelter"
+                >
+                  [5]
+                </button>
               </div>
-              <span className={`font-mono text-xs font-bold ${shieldFace.color}`}>{shieldFace.text}</span>
-            </div>
-            <div className="font-mono tabular-nums text-base font-bold text-[#F4F4F0] my-1">
-              {controls.shelterWallWaterLiters.toFixed(0)}{' '}
-              <span className="text-xs font-normal text-[#9CA3AF]">
-                L | {state.lastFlows.shieldedDoseRateMsvPerHr.toFixed(2)} mSv/h
+              <span
+                className={`px-1.5 py-0.5 rounded-[2px] border font-mono text-[10px] font-bold leading-none bg-[#14171C] ${shieldFace.border} ${shieldFace.color} shrink-0`}
+              >
+                {shieldFace.text}
               </span>
             </div>
-            <p className="text-[11px] text-[#9CA3AF] line-clamp-1 mb-2.5" title={enStrings.meters.shield.jargon}>
+            <div className="my-0.5 flex items-baseline gap-1">
+              <span className="font-mono tabular-nums text-sm font-bold text-[#F4F4F0]">
+                {controls.shelterWallWaterLiters.toFixed(0)} L
+              </span>
+              <span className="font-sans text-[11px] text-[#9CA3AF]">
+                | {state.lastFlows.shieldedDoseRateMsvPerHr.toFixed(2)} mSv/h
+              </span>
+            </div>
+            {/* Thin 3px level gauge bar */}
+            <div className="w-full bg-[#1E232B] h-[3px] rounded-full overflow-hidden my-1.5">
+              <div
+                className={`h-full transition-all duration-300 ${shieldUp ? 'bg-[#34D399]' : 'bg-[#EF4444]'}`}
+                style={{ width: `${Math.min(100, Math.max(0, (controls.shelterWallWaterLiters / 450) * 100))}%` }}
+              />
+            </div>
+            <p className="font-sans text-[11px] text-[#9CA3AF] truncate mb-2" title={enStrings.meters.shield.jargon}>
               {enStrings.meters.shield.jargon}
             </p>
           </div>
           <button
             type="button"
-            onClick={() =>
+            onClick={() => {
+              safePlaySound('valve_turn');
               onUpdateControls({
                 shelterWallWaterLiters: shieldUp ? 70 : 450,
                 crewInStormShelter: !controls.crewInStormShelter,
-              })
-            }
-            className={`${TAP_BTN} text-[#F4F4F0] ${shieldUp ? 'text-[#34D399]' : ''}`}
+              });
+            }}
+            className={`${TAP_BTN} ${shieldUp ? 'text-[#34D399]' : 'text-[#F59E0B]'}`}
           >
-            <span>{shieldUp ? enStrings.actions.shield70 : enStrings.actions.shield450}</span>
-            <span className={`h-2 w-2 rounded-full ${shieldUp ? 'bg-[#34D399]' : 'bg-[#4B5563]'}`} />
+            <span className="truncate pr-1">
+              {shieldUp ? enStrings.actions.shieldStateUp : enStrings.actions.shieldStateDown}
+            </span>
+            <span className={`h-2 w-2 rounded-full shrink-0 ${shieldUp ? 'bg-[#34D399]' : 'bg-[#4B5563]'}`} />
           </button>
         </div>
       </div>
@@ -438,7 +627,31 @@ export const CadetControlDeck: React.FC<{
   );
 };
 
-/** Story briefing (welcome) and 3-step spotlight tutorial (step1-3). */
+/**
+ * CadetControlDeck
+ * Thin backward-compatibility wrapper combining CadetMissionStrip.
+ */
+export const CadetControlDeck: React.FC<{
+  state: CrisisGameState;
+  env: CrisisHourEnvironment;
+  onUpdateControls: (patch: Partial<ValveAndBreakerControls>) => void;
+  onSelectStation: (station: CameraStationId) => void;
+}> = ({ state, env, onUpdateControls, onSelectStation }) => {
+  return (
+    <CadetMissionStrip
+      state={state}
+      env={env}
+      onUpdateControls={onUpdateControls}
+      onSelectStation={onSelectStation}
+    />
+  );
+};
+
+/**
+ * WelcomeAndTutorialModal
+ * Story briefing (welcome) and 3-step spotlight tutorial (step1-3).
+ * Sits at top-24/top-28 during steps 1-3 so bottom CadetMetersDock remains interactive.
+ */
 export const WelcomeAndTutorialModal: React.FC<{
   stage: TutorialStage;
   state: CrisisGameState;
@@ -455,12 +668,12 @@ export const WelcomeAndTutorialModal: React.FC<{
           role="dialog"
           aria-modal="true"
           aria-label={enStrings.welcome.title}
-          className="w-full max-w-lg bg-[#14171C] border border-[#3B4252] p-6 rounded-[2px] text-[#F4F4F0]"
+          className="w-full max-w-lg bg-[#14171C] border border-[#3B4252] p-6 rounded-[2px] text-[#F4F4F0] shadow-2xl"
         >
-          <div className="inline-block px-2.5 py-1 rounded-[2px] bg-[#1E232B] border border-[#F59E0B]/60 text-[#F59E0B] font-mono text-[10px] font-bold tracking-widest uppercase mb-3">
-            {enStrings.welcome.badge}
-          </div>
-          <h2 className="text-xl font-bold tracking-wide text-[#F4F4F0] mb-3">{enStrings.welcome.title}</h2>
+          {/* Eyebrow kicker removed per craft checks: h2 leads directly */}
+          <h2 className="font-sans font-bold text-xl tracking-wide text-[#F4F4F0] mb-3">
+            {enStrings.welcome.title}
+          </h2>
           <div className="space-y-2.5 text-sm text-[#D1D5DB] leading-relaxed mb-6">
             {enStrings.welcome.storySentences.map((sentence, idx) => (
               <p key={idx}>{sentence}</p>
@@ -476,7 +689,10 @@ export const WelcomeAndTutorialModal: React.FC<{
             </button>
             <button
               type="button"
-              onClick={() => onStageChange('step1')}
+              onClick={() => {
+                safePlaySound('toggle_switch');
+                onStageChange('step1');
+              }}
               className="w-full sm:w-auto px-5 py-2 min-h-[40px] rounded-[2px] border border-[#F59E0B] bg-[#1E232B] hover:bg-[#2A303A] text-[#F59E0B] font-sans text-xs font-bold uppercase tracking-wider cursor-pointer transition-all active:translate-y-px"
             >
               {enStrings.welcome.startTutorialBtn}
@@ -490,11 +706,11 @@ export const WelcomeAndTutorialModal: React.FC<{
   const stepNumber = stage === 'step1' ? 1 : stage === 'step2' ? 2 : 3;
 
   return (
-    <div className="fixed inset-x-0 bottom-8 z-50 flex justify-center px-4 pointer-events-none font-sans">
+    <div className="fixed inset-x-0 top-24 sm:top-28 z-40 flex justify-center px-4 pointer-events-none font-sans">
       <div
         role="region"
         aria-label="Cadet Tutorial Step"
-        className="pointer-events-auto w-full max-w-xl bg-[#14171C] border-2 border-[#F59E0B] p-5 rounded-[2px] text-[#F4F4F0]"
+        className="pointer-events-auto w-full max-w-xl bg-[#14171C] border border-[#F59E0B] p-5 rounded-[2px] text-[#F4F4F0] shadow-2xl"
       >
         <div className="flex items-center justify-between pb-3 border-b border-[#2E3440] mb-3">
           <span className="font-mono text-xs font-bold text-[#F59E0B] uppercase">
@@ -530,7 +746,10 @@ export const WelcomeAndTutorialModal: React.FC<{
           {stage === 'step1' && (
             <button
               type="button"
-              onClick={() => onStageChange('step2')}
+              onClick={() => {
+                safePlaySound('toggle_switch');
+                onStageChange('step2');
+              }}
               className="min-h-[40px] px-5 py-2 rounded-[2px] border border-[#F59E0B] bg-[#1E232B] hover:bg-[#2A303A] text-[#F59E0B] font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all active:translate-y-px"
             >
               <span>{enStrings.tutorial.nextBtn}</span>
@@ -542,10 +761,11 @@ export const WelcomeAndTutorialModal: React.FC<{
             <button
               type="button"
               onClick={() => {
+                safePlaySound('valve_turn');
                 onUpdateControls({ shelterWallWaterLiters: 450, crewInStormShelter: true });
                 onStageChange('step3');
               }}
-              className="min-h-[40px] px-5 py-2 rounded-[2px] border border-[#34D399] bg-[#1E232B] hover:bg-[#2A303A] text-[#34D399] font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all active:translate-y-px animate-pulse"
+              className="min-h-[40px] px-5 py-2 rounded-[2px] border border-[#34D399] bg-[#1E232B] hover:bg-[#2A303A] text-[#34D399] font-sans text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-all active:translate-y-px"
             >
               <Check className="h-4 w-4" />
               <span>{enStrings.tutorial.moveBtn}</span>
@@ -556,6 +776,7 @@ export const WelcomeAndTutorialModal: React.FC<{
             <button
               type="button"
               onClick={() => {
+                safePlaySound('valve_turn');
                 onResetTutorialWater();
                 onStageChange('done');
               }}

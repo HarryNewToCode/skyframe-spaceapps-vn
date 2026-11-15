@@ -60,6 +60,7 @@ export function App(): React.ReactElement {
   // Cadet View Mode & Tutorial Flow State
   const [viewMode, setViewMode] = useState<'cadet' | 'engineer'>('cadet');
   const [tutorialStage, setTutorialStage] = useState<TutorialStage>('welcome');
+  const [phaseAlert, setPhaseAlert] = useState<string | null>(null);
 
   // 4. Telemetry Tracking
   const minBatteryRef = useRef<number>(state.batteryKwh);
@@ -96,6 +97,7 @@ export function App(): React.ReactElement {
   // 5. Simulation Step & Playback Handlers
   const handleStepHour = useCallback(() => {
     ensureAmbientFanStarted();
+    setPhaseAlert(null);
     setState((prev) => {
       if (prev.status !== 'running') return prev;
       const next = advanceCrisisHour(prev);
@@ -108,6 +110,7 @@ export function App(): React.ReactElement {
 
   const handleTogglePlay = useCallback(() => {
     ensureAmbientFanStarted();
+    setPhaseAlert(null);
     setState((prev) => {
       if (prev.status === 'survived' || prev.status === 'failed') {
         const reset = createInitialCrisisState();
@@ -135,13 +138,17 @@ export function App(): React.ReactElement {
           return prev;
         }
         const next = advanceCrisisHour(prev);
-        if (
-          next.status !== 'running' ||
-          next.hour === 15 ||
-          next.hour === 29 ||
-          next.hour === 39
-        ) {
+        if (next.status !== 'running') {
           setIsPlaying(false);
+        } else if (next.hour === 15) {
+          setIsPlaying(false);
+          setPhaseAlert(enStrings.phasePauseAlerts.h15);
+        } else if (next.hour === 29) {
+          setIsPlaying(false);
+          setPhaseAlert(enStrings.phasePauseAlerts.h29);
+        } else if (next.hour === 39) {
+          setIsPlaying(false);
+          setPhaseAlert(enStrings.phasePauseAlerts.h39);
         }
         return next;
       });
@@ -194,6 +201,7 @@ export function App(): React.ReactElement {
   // 7. Preset Jumping
   const handleJumpPreset = useCallback((preset: CrisisPreset) => {
     ensureAmbientFanStarted();
+    setPhaseAlert(null);
     setIsPlaying(false);
     const next = createCrisisPresetState(preset);
     minBatteryRef.current = next.batteryKwh;
@@ -299,6 +307,9 @@ export function App(): React.ReactElement {
         onToggleViewMode={() => setViewMode((v) => (v === 'cadet' ? 'engineer' : 'cadet'))}
         onReplayTutorial={() => setTutorialStage('welcome')}
         onUpdateControls={handleUpdateControls}
+        highlightTradeOff={tutorialStage === 'step2' || tutorialStage === 'step3'}
+        phaseAlert={phaseAlert}
+        onDismissPhaseAlert={() => setPhaseAlert(null)}
       />
 
       {/* 3. End-of-Mission Debrief Modal (when Survived or Failed) */}

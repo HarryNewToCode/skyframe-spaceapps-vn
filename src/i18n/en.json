@@ -14,14 +14,14 @@
     "replayBtn": "Replay Tutorial",
     "skipBtn": "Skip",
     "nextBtn": "Next",
-    "moveBtn": "Fill Water Shield (450 L) — Try 1 Move!",
+    "moveBtn": "Pump 450 L to Shield Wall",
     "finishBtn": "Finish Tutorial & Start Mission",
     "stepTitle": "Step",
-    "tradeOffBefore": "Before: Shield 55% | Tank 450 L",
-    "tradeOffAfter": "After: Shield ~90% SAFE | Tank 70 L (<200 L warns plants/O2!)",
-    "step1": "Water in the shield blocks storm rays, but water in the main tank feeds plants and oxygen makers.",
-    "step2": "Moving water into the shield leaves less for plants, so keep at least 200 L in the main tank.",
-    "step3": "Plant lights use battery power, so dim them to 25% during the eclipse to make the battery last."
+    "tradeOffBefore": "Before: Shield 70 L (55%) | Tank 450 L",
+    "tradeOffAfter": "After: Shield 450 L (~90% SAFE) | Tank 70 L (<200 L warns plants/O2!)",
+    "step1": "In space, every resource is connected! Pumping water into the shelter walls blocks deadly solar radiation, but takes water away from the plants and oxygen maker.",
+    "step2": "Try 1 Move Now: Click 'Pump 450 L to Shield Wall' below and watch both the Water & Plants and Radiation Shield meters at the bottom change together!",
+    "step3": "Look at the trade-off! Radiation Shield jumped to SAFE (~90% blocked), while Tank Water dropped to 70 L (under 200 L starves plants!). During the dark eclipse, you'll also dim Plant Lights to 25% to save Battery."
   },
   "views": {
     "cadetToggle": "Cadet View",
@@ -66,7 +66,20 @@
     "shield450": "Fill Water Shield (450 L)",
     "shield70": "Return Water (70 L)",
     "crewIn": "Crew: In Shelter",
-    "crewOut": "Crew: Open Cabin"
+    "crewOut": "Crew: Open Cabin",
+    "lightsState100": "Lights: 100% (Tap for 25% Eco)",
+    "lightsState25": "Lights: 25% Eco (Tap for 100%)",
+    "airStateOn": "CO2 Scrubber: ON (Nominal)",
+    "airStateOff": "CO2 Scrubber: OFF (Tap to Turn ON!)",
+    "leakStateSaved": "Water Saver (V-2): ON (Sealed)",
+    "leakStateLeaking": "Water Leak (V-2): LEAKING (Seal)",
+    "shieldStateUp": "Shield: 450 L (Return 70 L)",
+    "shieldStateDown": "Shield: 70 L (Fill 450 L + Crew)"
+  },
+  "phasePauseAlerts": {
+    "h15": "Paused at T+15:00 — Solar Storm & Eclipse starting! Pump 450 L to Shield Wall and dim Plant Lights to 25%, then press Play.",
+    "h29": "Paused at T+29:00 — Deep Crater Shadow! Check Battery reserve & keep CO2 Scrubber ON, then press Play.",
+    "h39": "Paused at T+39:00 — Solar Storm peak passing! Return Shield Water to 70 L so the main tank reaches >= 200 L, then press Play."
   },
   "hints": {
     "radEmergency": "Solar Storm Alert! Click Fill Water Shield (450 L) & Crew: In Shelter now!",
