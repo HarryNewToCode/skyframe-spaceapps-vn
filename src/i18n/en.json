@@ -1,0 +1,165 @@
+{
+  "welcome": {
+    "badge": "NASA SPACE APPS // CADET FLIGHT BRIEFING",
+    "title": "Welcome to Lunar Outpost Aquarius",
+    "storySentences": [
+      "Four astronauts live at Shackleton Crater on the Moon.",
+      "A 72-hour solar storm is coming, and the Sun will hide behind the ridge for 46 hours.",
+      "You must balance power, air, water, food, and the radiation shield to keep everyone safe."
+    ],
+    "startTutorialBtn": "Start 1-Move Tutorial (30s)",
+    "skipTutorialBtn": "Skip to Mission"
+  },
+  "tutorial": {
+    "replayBtn": "Replay Tutorial",
+    "skipBtn": "Skip",
+    "nextBtn": "Next",
+    "moveBtn": "Fill Water Shield (450 L) — Try 1 Move!",
+    "finishBtn": "Finish Tutorial & Start Mission",
+    "stepTitle": "Step",
+    "tradeOffBefore": "Before: Shield 55% | Tank 450 L",
+    "tradeOffAfter": "After: Shield ~90% SAFE | Tank 70 L (<200 L warns plants/O2!)",
+    "step1": "Water in the shield blocks storm rays, but water in the main tank feeds plants and oxygen makers.",
+    "step2": "Moving water into the shield leaves less for plants, so keep at least 200 L in the main tank.",
+    "step3": "Plant lights use battery power, so dim them to 25% during the eclipse to make the battery last."
+  },
+  "views": {
+    "cadetToggle": "Cadet View",
+    "engineerToggle": "Engineer View",
+    "whatNowBtn": "What now?",
+    "doMoveBtn": "Do This Move",
+    "hideHintBtn": "Hide",
+    "missionGoalsTitle": "Mission Checkpoints",
+    "progressLabel": "Mission Progress",
+    "starsLabel": "Stars"
+  },
+  "meters": {
+    "power": {
+      "label": "Power (Battery)",
+      "jargon": "kWh = stored electricity for heaters, air pumps, and plant lights."
+    },
+    "air": {
+      "label": "Air (O2 & CO2)",
+      "jargon": "mmHg = breathed-out CO2 gas pressure; keep under 4.0 so crew thinks clearly."
+    },
+    "waterFood": {
+      "label": "Water & Plants",
+      "jargon": "Keep >= 200 L in main tank or plants & oxygen makers dry out."
+    },
+    "shield": {
+      "label": "Radiation Shield",
+      "jargon": "mSv/h = radiation speed; water walls block solar protons."
+    },
+    "faces": {
+      "good": ":) SAFE",
+      "warn": ":| WATCH",
+      "bad": ":( DANGER"
+    }
+  },
+  "actions": {
+    "lights25": "Plant Lights: 25% (Save Power)",
+    "lights100": "Plant Lights: 100%",
+    "airBoostOn": "Sabatier CO2 Scrubber: ON",
+    "airBoostOff": "Sabatier CO2 Scrubber: OFF",
+    "leakStopOn": "Stop Water Leak (V-2): ON",
+    "leakStopOff": "Stop Water Leak (V-2): OFF",
+    "shield450": "Fill Water Shield (450 L)",
+    "shield70": "Return Water (70 L)",
+    "crewIn": "Crew: In Shelter",
+    "crewOut": "Crew: Open Cabin"
+  },
+  "hints": {
+    "radEmergency": "Solar Storm Alert! Click Fill Water Shield (450 L) & Crew: In Shelter now!",
+    "waterBleed": "You are losing 1.85 L/h water! Turn ON Stop Water Leak (V-2) right away.",
+    "co2Warning": "CO2 gas is rising! Turn ON Sabatier CO2 Scrubber to scrub the air.",
+    "eclipseDrain": "Crater shadow eclipse! Set Plant Lights to 25% so the battery lasts.",
+    "postStormRefill": "Storm peak passed! Set Water Shield back to 70 L so plants & oxygen get water.",
+    "steady": "All systems steady! Click +1h or Play toward T+72:00 h."
+  },
+  "checkpoints": [
+    {
+      "id": "cp1",
+      "hours": "T+00h-14h",
+      "title": "1. Seal the Water Leak",
+      "goal": "Turn ON Stop Water Leak (V-2) so recycling keeps water."
+    },
+    {
+      "id": "cp2",
+      "hours": "T+15h-28h",
+      "title": "2. Block the Solar Storm",
+      "goal": "Fill Water Shield (450 L) & put Crew In Shelter."
+    },
+    {
+      "id": "cp3",
+      "hours": "T+29h-38h",
+      "title": "3. Survive the Dark Eclipse",
+      "goal": "Set Plant Lights <= 50% & turn ON Sabatier CO2 Scrubber."
+    },
+    {
+      "id": "cp4",
+      "hours": "T+39h-72h",
+      "title": "4. Refill Tank & Recover",
+      "goal": "Return Water Shield to 70 L (>=200 L tank) after storm & reach 72h."
+    }
+  ],
+  "debrief": {
+    "workedTitle": "What Worked",
+    "failedTitle": "What Needed Help",
+    "starsEarned": "Checkpoints Earned",
+    "workedLeak": "Sealed water leak with V-2 Methane Pyrolysis.",
+    "workedShield": "Blocked Carrington storm with shelter water wall.",
+    "workedBattery": "Kept battery charged through 46h crater shadow eclipse.",
+    "workedAir": "Kept CO2 under toxic limit with Mailbox scrubber.",
+    "workedPlants": "Kept space garden and tank water alive.",
+    "failedLeak": "Forgot V-2 Methane Pyrolysis — vented water.",
+    "failedRad": "Solar proton dose exceeded safe mission limits.",
+    "failedBattery": "Drained battery during eclipse while lights ran high.",
+    "failedAir": "Cabin CO2 climbed past safe limits.",
+    "failedWater": "Main tank starved <200 L too long."
+  },
+  "nasaSimplified": {
+    "badge": "Simplified for the game — educational model only, no medical claims.",
+    "labels": {
+      "whatItIs": "What it is",
+      "whyItMatters": "Why it matters for the crew",
+      "whatYouCanDo": "What you can do"
+    },
+    "entries": {
+      "bvad_metabolism": {
+        "whatItIs": "NASA's list of how much air, water, and food one astronaut needs each day.",
+        "whyItMatters": "Four crew breathe in about 0.140 kg of oxygen and breathe out about 0.167 kg of CO2 every hour.",
+        "whatYouCanDo": "Match the air and food systems to these numbers so nobody runs out."
+      },
+      "bvad_electrolysis_sabatier": {
+        "whatItIs": "Ways to split water into oxygen and hydrogen, and to turn CO2 into methane.",
+        "whyItMatters": "Splitting water takes 4.5 kWh of power per kg of oxygen. If methane is vented, about 0.068 L of water leaves the base every hour.",
+        "whatYouCanDo": "Turn ON the V-2 Methane Pyrolysis loop so the hydrogen and water are saved."
+      },
+      "aug1972_spe_flux": {
+        "whatItIs": "A huge solar storm in August 1972 sent harmful space particles toward the Moon.",
+        "whyItMatters": "At its peak it reached 62,000 pfu, and without shielding the dose rate hit 142.0 mSv/hr.",
+        "whatYouCanDo": "Get behind the water wall and keep the crew In Shelter."
+      },
+      "crater_oltaris_waterwall": {
+        "whatItIs": "Tests show that water is good at blocking space radiation.",
+        "whyItMatters": "A 500 L water jacket on a 25 m^2 wall cuts the storm dose by about 90%.",
+        "whatYouCanDo": "Fill the Water Shield (450 L) before the storm peak arrives."
+      },
+      "lola_shackleton_eclipse": {
+        "whatItIs": "The ridge around Shackleton Crater blocks the low Sun and creates a long shadow.",
+        "whyItMatters": "The shadow lasts 46 hours, from Hour 12 to Hour 58, and the ground gets much colder, from 220 K down to 42 K.",
+        "whatYouCanDo": "Set Plant Lights to 25% so the battery lasts through the dark."
+      },
+      "veggie_hydroponics": {
+        "whatItIs": "Plants grown in water and light help clean the air and make food.",
+        "whyItMatters": "A full 12 m^2 plant bay uses 14.0 kW of light and scrubs 0.095 kg of CO2 while making 0.070 kg of O2 each hour.",
+        "whatYouCanDo": "Keep the tank water above 200 L so the plants stay alive."
+      },
+      "nasa_std_3001": {
+        "whatItIs": "NASA's safety rules for how much CO2 and radiation a crew can handle.",
+        "whyItMatters": "CO2 at 4.0 mmHg or more makes thinking hard, and 75 mSv or more of radiation means the mission must stop.",
+        "whatYouCanDo": "Turn ON Mailbox Air Boost and keep the crew In Shelter to stay under these limits."
+      }
+    }
+  }
+}

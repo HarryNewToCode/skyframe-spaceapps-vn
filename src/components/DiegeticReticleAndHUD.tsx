@@ -18,7 +18,10 @@ import type {
   CrisisHourEnvironment,
   CameraStationId,
   Interactive3DTarget,
+  ValveAndBreakerControls,
 } from '../contracts/types';
+import enStrings from '../i18n/en.json';
+import { CadetControlDeck } from './CadetOnboardingAndHUD';
 import * as CockpitAudio from '../three/CockpitAudioAndTextures';
 
 // Safe bridge to parallel-updated audio exports
@@ -52,6 +55,10 @@ export interface DiegeticReticleAndHUDProps {
   onChangeSpeed: (ms: number) => void;
   onJumpPreset: (preset: 'nominal_start' | 'hour15_spe_onset' | 'sabatier_bleed_trap') => void;
   onOpenScienceModal: (citationId?: CitationId) => void;
+  viewMode: 'cadet' | 'engineer';
+  onToggleViewMode: () => void;
+  onReplayTutorial: () => void;
+  onUpdateControls: (patch: Partial<ValveAndBreakerControls>) => void;
 }
 
 const STATIONS: { id: CameraStationId; label: string; title: string }[] = [
@@ -75,6 +82,10 @@ export const DiegeticReticleAndHUD: React.FC<DiegeticReticleAndHUDProps> = ({
   onChangeSpeed,
   onJumpPreset,
   onOpenScienceModal,
+  viewMode,
+  onToggleViewMode,
+  onReplayTutorial,
+  onUpdateControls,
 }) => {
   // Local audio mute state synced with audio engine
   const [audioMuted, setAudioMuted] = useState<boolean>(() => isCockpitAudioMuted());
@@ -319,40 +330,73 @@ export const DiegeticReticleAndHUD: React.FC<DiegeticReticleAndHUDProps> = ({
               <BookOpen className="h-3 w-3 text-[#9CA3AF]" />
               <span>NASA Specs [C]</span>
             </button>
+
+            {/* Cadet / Engineer View Toggle */}
+            <button
+              type="button"
+              onClick={onToggleViewMode}
+              className={`rounded-[2px] border min-h-[30px] bg-[#1E232B] hover:bg-[#2A303A] active:translate-y-px px-2 py-1 text-[11px] font-sans font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                viewMode === 'engineer'
+                  ? 'border-[#38BDF8] text-[#38BDF8]'
+                  : 'border-[#3B4252] text-[#F4F4F0]'
+              }`}
+              title="Toggle Cadet / Engineer View Deck"
+            >
+              <span>{viewMode === 'cadet' ? enStrings.views.engineerToggle : enStrings.views.cadetToggle}</span>
+            </button>
+
+            {/* Replay Tutorial */}
+            <button
+              type="button"
+              onClick={onReplayTutorial}
+              className="rounded-[2px] border border-[#3B4252] bg-[#1E232B] hover:bg-[#2A303A] active:translate-y-px px-2 py-1 min-h-[30px] text-[11px] font-sans font-medium text-[#F4F4F0] whitespace-nowrap transition-colors flex items-center gap-1.5"
+              title="Replay Cadet Briefing & Tutorial"
+            >
+              <span>{enStrings.tutorial.replayBtn}</span>
+            </button>
           </div>
         </div>
 
-        {/* Row 2: Caution & Warning Matrix Annunciators */}
-        <div className="flex items-center justify-between gap-2 w-full border-t border-[#1E232B] pt-1">
-          <span className="text-[10px] font-sans font-medium text-[#9CA3AF] whitespace-nowrap">Caution &amp; Warning Matrix</span>
-          <div className="grid grid-cols-6 gap-1.5 flex-1 max-w-4xl">
-            {annunciators.map((tile) => {
-              let tileClass = 'bg-[#0D1014] border-[#252A32] text-[#525B66]';
-              let labelClass = 'text-[#525B66]';
-              if (tile.level === 'red') {
-                tileClass = 'bg-[#450A0A] border-[#EF4444] text-[#FEE2E2]';
-                labelClass = 'text-[#FCA5A5]';
-              } else if (tile.level === 'amber') {
-                tileClass = 'bg-[#451A03] border-[#F59E0B] text-[#FEF3C7]';
-                labelClass = 'text-[#FDE68A]';
-              }
+        {/* Row 2: Cadet Deck or Caution & Warning Matrix Annunciators */}
+        {viewMode === 'cadet' ? (
+          <CadetControlDeck
+            state={state}
+            env={env}
+            onUpdateControls={onUpdateControls}
+            onSelectStation={onSelectStation}
+          />
+        ) : (
+          <div className="flex items-center justify-between gap-2 w-full border-t border-[#1E232B] pt-1">
+            <span className="text-[10px] font-sans font-medium text-[#9CA3AF] whitespace-nowrap">Caution &amp; Warning Matrix</span>
+            <div className="grid grid-cols-6 gap-1.5 flex-1 max-w-4xl">
+              {annunciators.map((tile) => {
+                let tileClass = 'bg-[#0D1014] border-[#252A32] text-[#525B66]';
+                let labelClass = 'text-[#525B66]';
+                if (tile.level === 'red') {
+                  tileClass = 'bg-[#450A0A] border-[#EF4444] text-[#FEE2E2]';
+                  labelClass = 'text-[#FCA5A5]';
+                } else if (tile.level === 'amber') {
+                  tileClass = 'bg-[#451A03] border-[#F59E0B] text-[#FEF3C7]';
+                  labelClass = 'text-[#FDE68A]';
+                }
 
-              return (
-                <div
-                  key={tile.id}
-                  className={`rounded-[2px] border px-2 py-0.5 flex flex-col justify-center min-w-0 transition-colors ${tileClass}`}
-                >
-                  <span className={`text-[9px] font-sans font-medium uppercase tracking-wider leading-none truncate ${labelClass}`}>
-                    {tile.label}
-                  </span>
-                  <span className="text-[10px] font-mono font-bold tabular-nums leading-tight mt-0.5 truncate">
-                    {tile.value}
-                  </span>
-                </div>
-              );
-            })}
+                return (
+                  <div
+                    key={tile.id}
+                    className={`rounded-[2px] border px-2 py-0.5 flex flex-col justify-center min-w-0 transition-colors ${tileClass}`}
+                  >
+                    <span className={`text-[9px] font-sans font-medium uppercase tracking-wider leading-none truncate ${labelClass}`}>
+                      {tile.label}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold tabular-nums leading-tight mt-0.5 truncate">
+                      {tile.value}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ------------------------------------------------------------- */}

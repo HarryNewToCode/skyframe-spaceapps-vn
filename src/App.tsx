@@ -27,6 +27,12 @@ import {
 import { AquariusHabitat3D } from './three/AquariusHabitat3D';
 import { DiegeticReticleAndHUD } from './components/DiegeticReticleAndHUD';
 import { NasaSourceModal } from './components/NasaSourceModal';
+import {
+  WelcomeAndTutorialModal,
+  computeDebriefSummary,
+  type TutorialStage,
+} from './components/CadetOnboardingAndHUD';
+import enStrings from './i18n/en.json';
 import * as CockpitAudio from './three/CockpitAudioAndTextures';
 
 // Safe bridge to parallel-updated audio engine
@@ -50,6 +56,10 @@ export function App(): React.ReactElement {
   // 3. NASA Citation Modal State
   const [scienceModalOpen, setScienceModalOpen] = useState<boolean>(false);
   const [activeCitationId, setActiveCitationId] = useState<CitationId | null>(null);
+
+  // Cadet View Mode & Tutorial Flow State
+  const [viewMode, setViewMode] = useState<'cadet' | 'engineer'>('cadet');
+  const [tutorialStage, setTutorialStage] = useState<TutorialStage>('welcome');
 
   // 4. Telemetry Tracking
   const minBatteryRef = useRef<number>(state.batteryKwh);
@@ -280,6 +290,10 @@ export function App(): React.ReactElement {
         onChangeSpeed={handleChangeSpeed}
         onJumpPreset={handleJumpPreset}
         onOpenScienceModal={handleOpenScienceModal}
+        viewMode={viewMode}
+        onToggleViewMode={() => setViewMode((v) => (v === 'cadet' ? 'engineer' : 'cadet'))}
+        onReplayTutorial={() => setTutorialStage('welcome')}
+        onUpdateControls={handleUpdateControls}
       />
 
       {/* 3. End-of-Mission Debrief Modal (when Survived or Failed) */}
@@ -362,6 +376,59 @@ export function App(): React.ReactElement {
               </div>
             </div>
 
+            {/* Cadet Mission Debrief Checklist (Stars & Checkpoints) */}
+            {(() => {
+              const debrief = computeDebriefSummary(state, minBatteryRef.current);
+              return (
+                <div className="bg-[#1C2026] p-3.5 rounded-[2px] border border-[#2E3440] my-3">
+                  <div className="flex items-center justify-between border-b border-[#2E3440] pb-1.5 mb-2.5">
+                    <span className="font-sans text-xs font-bold uppercase tracking-wider text-[#F4F4F0]">
+                      {enStrings.debrief.starsEarned}
+                    </span>
+                    <span className="font-mono text-xs font-bold text-[#F59E0B] tracking-wider">
+                      {debrief.stars}/4 ★
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-sans">
+                    <div>
+                      <div className="text-[#34D399] font-medium text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <span>✓</span> {enStrings.debrief.workedTitle}
+                      </div>
+                      {debrief.worked.length > 0 ? (
+                        <ul className="space-y-1 text-[#D1D5DB] text-[11px]">
+                          {debrief.worked.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="text-[#34D399] shrink-0 mt-0.5">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-[11px] text-[#6B7280] italic">None completed</p>
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-[#EF4444] font-medium text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <span>✕</span> {enStrings.debrief.failedTitle}
+                      </div>
+                      {debrief.failed.length > 0 ? (
+                        <ul className="space-y-1 text-[#D1D5DB] text-[11px]">
+                          {debrief.failed.map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="text-[#EF4444] shrink-0 mt-0.5">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-[11px] text-[#6B7280] italic">None failed</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* Actions */}
             <div className="flex flex-wrap items-center justify-end gap-3 pt-3 border-t border-[#2E3440]">
               {state.failureCitationId && (
@@ -405,6 +472,19 @@ export function App(): React.ReactElement {
         onClose={handleCloseScienceModal}
         citations={NASA_CITATIONS}
       />
+
+      {/* 5. Cadet Onboarding Briefing & 1-Move Tutorial Modal */}
+      {tutorialStage !== 'done' && (
+        <WelcomeAndTutorialModal
+          stage={tutorialStage}
+          state={state}
+          onStageChange={setTutorialStage}
+          onUpdateControls={handleUpdateControls}
+          onResetTutorialWater={() =>
+            handleUpdateControls({ shelterWallWaterLiters: 70, crewInStormShelter: false })
+          }
+        />
+      )}
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
   Network,
 } from "lucide-react";
 import type { CitationId, NasaCitation } from "../contracts/types";
+import enStrings from "../i18n/en.json";
 
 export interface NasaSourceModalProps {
   isOpen: boolean;
@@ -382,6 +383,25 @@ export function NasaSourceModal({
                         Open source
                       </a>
                     </div>
+
+                    {/* Cadet simplified summary */}
+                    <section className="border border-[#10B981]/40 bg-[#10B981]/5 px-4 py-3">
+                      <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#10B981]">
+                        {enStrings.nasaSimplified.badge}
+                      </p>
+                      <dl className="mt-2 space-y-2">
+                        {(["whatItIs", "whyItMatters", "whatYouCanDo"] as const).map((key) => (
+                          <div key={key}>
+                            <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#64748B]">
+                              {enStrings.nasaSimplified.labels[key]}
+                            </dt>
+                            <dd className="font-mono text-[11px] leading-relaxed text-[#CBD5E1]">
+                              {enStrings.nasaSimplified.entries[selected.id][key]}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </section>
 
                     {/* Parameter summary */}
                     <section>
